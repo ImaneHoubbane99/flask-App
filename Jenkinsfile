@@ -1,16 +1,10 @@
 pipeline {
     agent any
 
-    options {
-        // Disable the default automatic SCM checkout
-        skipDefaultCheckout(true)
-    }
-
     environment {
-        // Use the internal SonarQube service URL
-        SONARQUBE_URL = 'http://sonarqube:9000'
-        SONARQUBE_TOKEN = credentials('SonarQube Authentication Token')  // Add SonarQube token in Jenkins credentials
         GITHUB_TOKEN = credentials('github-token')
+        SONARQUBE_TOKEN = credentials('SonarQube Authentication Token')
+        SONARQUBE_URL = 'http://sonarqube:9000'
     }
 
     stages {
@@ -28,7 +22,9 @@ pipeline {
         stage('Setup Virtual Environment') {
             steps {
                 script {
-                    docker.image('python:3.8-slim').inside('-u root') {
+                    def pythonDocker = docker.image('python:3.8-slim')
+                    pythonDocker.pull()
+                    pythonDocker.inside('-u root') {
                         sh '''
                         apt-get update
                         apt-get install -y python3-venv
@@ -48,7 +44,8 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    docker.image('python:3.8-slim').inside('-u root') {
+                    def pythonDocker = docker.image('python:3.8-slim')
+                    pythonDocker.inside('-u root') {
                         sh '''
                         . venv/bin/activate
                         pytest flask-App
@@ -61,7 +58,8 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    docker.image('python:3.8-slim').inside('-u root') {
+                    def pythonDocker = docker.image('python:3.8-slim')
+                    pythonDocker.inside('-u root') {
                         withSonarQubeEnv('SonarQube') {
                             sh '''
                             sonar-scanner \
@@ -87,8 +85,8 @@ pipeline {
         stage("Trigger Github Actions") {
             steps {
                 script {
-                    docker.image('python:3.8-slim').inside('-u root') {
-                        echo "Trigger Github Actions"
+                    def pythonDocker = docker.image('python:3.8-slim')
+                    pythonDocker.inside('-u root') {
                         sh '''
                         curl -X POST \
                         -H "Authorization: token $GITHUB_TOKEN" \
