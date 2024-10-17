@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      containers:
+      - name: jenkins
+        image: jenkins/jenkins:lts
+        ports:
+        - containerPort: 8080
+        - containerPort: 50000
+        volumeMounts:
+        - name: jenkins-storage
+          mountPath: /var/jenkins_home  # Jenkins data directory
+      volumes:
+      - name: jenkins-storage
+        persistentVolumeClaim:
+          claimName: jenkins-pvc  # Bind the PVC to the deployment
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  type: NodePort  # Use NodePort for local access
+  ports:
+  - port: 8080
+    name: server
+    targetPort: 8080
+    nodePort: 30000  # Expose Jenkins UI on localhost:30000
+  - port: 50000
+    name: agent
+    targetPort: 50000
+  selector:
+    app: jenkins
