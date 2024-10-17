@@ -19,13 +19,21 @@ spec:
         ports:
         - containerPort: 8080
         - containerPort: 50000
+        securityContext:
+          runAsUser: 0  # Run Jenkins as root to avoid permission issues
         volumeMounts:
         - name: jenkins-storage
           mountPath: /var/jenkins_home  # Jenkins data directory
+        - name: docker-socket
+          mountPath: /var/run/docker.sock  # Mount Docker socket from host
       volumes:
       - name: jenkins-storage
         persistentVolumeClaim:
           claimName: jenkins-pvc  # Bind the PVC to the deployment
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock  # Docker socket path on the host
+          type: Socket  # Ensure it's recognized as a socket file
 ---
 apiVersion: v1
 kind: Service

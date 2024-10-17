@@ -1,202 +1,77 @@
 YOUR_GITHUB_TOKEN
 username/repo
 
-1- install kuberntes cluster
-curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-sudo install minikube-linux-amd64 /usr/local/bin/minikube
-minikube version
-minikube start --driver=docker
-minikube status
-sudo apt-get update
-sudo apt-get install -y kubectl
-kubectl get nodes
+1-Set Up Jenkins on VM 1:
+1.1 Install Java
+sudo apt update
+sudo apt install openjdk-11-jdk
+1.2 Add Jenkins Repository and Install Jenkins:
+wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | sudo apt-key add -
+sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+sudo apt update
+sudo apt install jenkins
+1.3 Start Jenkins:
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
+1.4 
+http://<Jenkins-VM-IP>:8080
 
-2- install jenkins
-kubectl create namespace jenkins
+2-Set Up SonarQube on VM 2
+2.1 Install Java
+sudo apt update
+sudo apt install openjdk-11-jdk
+2.2 Install SonarQube:
+wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-9.7.0.61563.zip
+sudo apt install unzip
+unzip sonarqube-9.7.0.61563.zip
+sudo mv sonarqube-9.7.0.61563 /opt/sonarqube
+2.3 Create a User and Set Permissions:
+sudo groupadd sonar
+sudo useradd -d /opt/sonarqube -g sonar sonar
+sudo chown -R sonar:sonar /opt/sonarqube
+2.4 Run SonarQube
+sudo su - sonar
+/opt/sonarqube/bin/linux-x86-64/sonar.sh start
+2.5 access:
+http://<SonarQube-VM-IP>:9000 admin:admin
 
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: jenkins-pv
-  labels:
-    type: local
-spec:
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data_jenkins/jenkins"  # Path on the local node where the data will be stored
+3-Install and Configure SonarScanner on Jenkins VM (VM 1):
+3.1 Download and Install SonarScanner:
+wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
+unzip sonar-scanner-cli-4.7.0.2747-linux.zip
+sudo mv sonar-scanner-4.7.0.2747-linux /opt/sonarscanner
 
-kubectl apply -f jenkins-pv.yaml 
+3.2 Configure Environment Variables:
+echo 'export PATH=$PATH:/opt/sonarscanner/bin' >> ~/.bashrc
+source ~/.bashrc
 
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: jenkins-pvc
-  namespace: jenkins
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
-  selector:
-    matchLabels:
-      type: local
-
-kubectl apply -f jenkins-pvc.yaml 
-
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: jenkins
-  namespace: jenkins
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: jenkins
-  template:
-    metadata:
-      labels:
-        app: jenkins
-    spec:
-      containers:
-      - name: jenkins
-        image: jenkins/jenkins:lts
-        ports:
-        - containerPort: 8080
-        - containerPort: 50000
-        volumeMounts:
-        - name: jenkins-storage
-          mountPath: /var/jenkins_home  # Jenkins data directory
-      volumes:
-      - name: jenkins-storage
-        persistentVolumeClaim:
-          claimName: jenkins-pvc  # Bind the PVC to the deployment
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: jenkins
-  namespace: jenkins
-spec:
-  type: NodePort  # Use NodePort for local access
-  ports:
-  - port: 8080
-    targetPort: 8080
-    nodePort: 30000  # Expose Jenkins UI on localhost:30000
-  - port: 50000
-    targetPort: 50000
-  selector:
-    app: jenkins
-
-kubectl apply -f jenkins-deployment.yaml
-
-kubectl get pods -n jenkins
-
-kubectl get svc -n jenkins
-
-kubectl port-forward jenkins_pod_name -n jenkins 8080:8080
-
-external-ip:8080
-
-3-install sonarscanner
-
-apiVersion: v1
-kind: Pod
-metadata:
-  name: sonarscanner
-  labels:
-    app: sonarscanner
-spec:
-  containers:
-  - name: sonarscanner
-    image: sonarsource/sonar-scanner-cli:latest
-    command: [ "sleep", "infinity" ]
-
-kubectl apply -f sonarscanner-pod.yaml
+3.3 Test SonarScanner: 
+sonar-scanner --version
 
 
-kubectl exec -it sonarscanner -- /bin/bash
+4-Connect Jenkins with SonarQube:
+Install the SonarQube Plugin in Jenkins:
 
-
-
-
-
-
-4-install sonarqube
-
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: sonarqube
-  labels:
-    app: sonarqube
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: sonarqube
-  template:
-    metadata:
-      labels:
-        app: sonarqube
-    spec:
-      containers:
-      - name: sonarqube
-        image: sonarqube:latest
-        ports:
-        - containerPort: 9000
-        volumeMounts:
-        - name: sonarqube-data
-          mountPath: /opt/sonarqube/data
-        - name: sonarqube-logs
-          mountPath: /opt/sonarqube/logs
-      volumes:
-      - name: sonarqube-data
-        emptyDir: {}
-      - name: sonarqube-logs
-        emptyDir: {}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: sonarqube
-spec:
-  type: NodePort
-  ports:
-  - port: 9000
-    targetPort: 9000
-    nodePort: 30001
-  selector:
-    app: sonarqube
-
-
-kubectl apply -f sonarqube-deployment.yaml
-kubectl get svc sonarqube : admin:admin
-kubectl port-forward sonarqube-74777577d4-64zf4 9000:9000
-
-5-Configure Jenkins to Use SonarQube
-
-5.1 Install SonarQube Scanner Plugin
-In Jenkins, install the SonarQube Scanner plugin:
-Go to Manage Jenkins > Manage Plugins > Available.
+Go to Manage Jenkins -> Manage Plugins -> Available.
 Search for SonarQube Scanner and install it.
+Configure SonarQube in Jenkins:
 
-5.2 Configure SonarQube Server in Jenkins
-Go to Manage Jenkins > Configure System.
-Scroll down to the SonarQube servers section.
-Add a new SonarQube server configuration:
+Go to Manage Jenkins -> Configure System.
+Scroll down to SonarQube Servers.
+Add a new SonarQube server with:
 Name: SonarQube
-Server URL: http://sonarqube:9000 (internal DNS name of the SonarQube service).
-Server Authentication Token: Add your SonarQube token as credentials.
+Server URL: http://<SonarQube-VM-IP>:9000
+Server authentication token:
+Generate a token in SonarQube:
+Log into SonarQube -> My Account -> Security -> Generate Tokens.
+Use this token in Jenkins.
+Configure SonarScanner in Jenkins:
 
-password : Oualid1998@oualid
+Go to Manage Jenkins -> Global Tool Configuration.
+Scroll to SonarQube Scanner.
+Click Add SonarQube Scanner and specify the installation directory /opt/sonarscanner.
 
-5.3 Configure SonarScanner in Jenkins
-Go to Manage Jenkins > Global Tool Configuration.
-Scroll down to SonarQube Scanner.
-Add SonarQube Scanner and give it a name (e.g., SonarScanner).
+
+
+
 

@@ -1,10 +1,13 @@
 pipeline {
     agent any
 
+    options {
+        // Disable the default automatic SCM checkout
+        skipDefaultCheckout(true)
+    }
+
     environment {
-        GITHUB_TOKEN = credentials('github-token')
-        SONARQUBE_TOKEN = credentials('SonarQube Authentication Token')
-        SONARQUBE_URL = 'http://sonarqube:9000'
+        GITHUB_TOKEN = credentials('github-token')  // Add GitHub token in Jenkins credentials
     }
 
     stages {
@@ -21,82 +24,41 @@ pipeline {
 
         stage('Setup Virtual Environment') {
             steps {
-                script {
-                    def pythonDocker = docker.image('python:3.8-slim')
-                    pythonDocker.pull()
-                    pythonDocker.inside('-u root') {
-                        sh '''
-                        apt-get update
-                        apt-get install -y python3-venv
+                sh '''
+                sudo apt-get update
+                sudo apt-get install -y python3-venv
 
-                        if [ ! -d "venv" ]; then
-                            python3 -m venv venv
-                        fi
+                if [ ! -d "venv" ]; then
+                    python3 -m venv venv
+                fi
 
-                        . venv/bin/activate
-                        pip install -r flask-App/requirements.txt
-                        '''
-                    }
-                }
+                . venv/bin/activate
+                pip install -r flask-App/requirements.txt
+                '''
             }
         }
 
         stage('Test') {
             steps {
-                script {
-                    def pythonDocker = docker.image('python:3.8-slim')
-                    pythonDocker.inside('-u root') {
-                        sh '''
-                        . venv/bin/activate
-                        pytest flask-App
-                        '''
-                    }
-                }
+                sh '''
+                . venv/bin/activate
+                pytest flask-App
+                '''
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                script {
-                    def pythonDocker = docker.image('python:3.8-slim')
-                    pythonDocker.inside('-u root') {
-                        withSonarQubeEnv('SonarQube') {
-                            sh '''
-                            sonar-scanner \
-                              -Dsonar.projectKey=flask-App \
-                              -Dsonar.sources=flask-App \
-                              -Dsonar.host.url=$SONARQUBE_URL \
-                              -Dsonar.login=$SONARQUBE_TOKEN
-                            '''
-                        }
-                    }
-                }
-            }
-        }
 
-        stage('Quality Gate') {
+        stage('Trigger GitHub Actions') {
             steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
+                echo "Triggering GitHub Actions"
+                sh '''
+                curl -X POST \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github.everest-preview+json" \
+                https://api.github.com/repos/ImaneHoubbane99/deployment-files/dispatches \
+                -d '{"event_type":"trigger-workflow"}'
+                '''
             }
-        }
-
-        stage("Trigger Github Actions") {
-            steps {
-                script {
-                    def pythonDocker = docker.image('python:3.8-slim')
-                    pythonDocker.inside('-u root') {
-                        sh '''
-                        curl -X POST \
-                        -H "Authorization: token $GITHUB_TOKEN" \
-                        -H "Accept: application/vnd.github.everest-preview+json" \
-                        https://api.github.com/repos/ImaneHoubbane99/deployment-files/dispatches \
-                        -d '{"event_type":"trigger-workflow"}'
-                        '''
-                    }
-                }
-            }
-        }
+        }  
     }
 }
