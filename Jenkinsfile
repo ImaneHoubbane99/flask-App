@@ -11,7 +11,6 @@ pipeline {
         SONARQUBE_URL = 'http://sonarqube:9000'
         SONARQUBE_TOKEN = credentials('SonarQube Authentication Token')  // Add SonarQube token in Jenkins credentials
         GITHUB_TOKEN = credentials('github-token')
-
     }
 
     stages {
@@ -73,20 +72,18 @@ pipeline {
             }
         }
 
-
-
-
         // trigger Github Actions
-        stage("trigger Github Actions"){
-            echo "Trigger Github Actions"
-            sh 
-            '''
-            curl -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.everest-preview+json" \
-            https://api.github.com/repos/ImaneHoubbane99/deployment-files/dispatches \
-            -d '{"event_type":"trigger-workflow"}'
-            '''
+        stage("trigger Github Actions") {
+            steps {
+                echo "Trigger Github Actions"
+                sh '''
+                curl -X POST \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github.everest-preview+json" \
+                https://api.github.com/repos/ImaneHoubbane99/deployment-files/dispatches \
+                -d '{"event_type":"trigger-workflow"}'
+                '''
+            }
         }       
     }
 }
