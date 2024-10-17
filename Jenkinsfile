@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'python:3.8-slim'  // Use an official Python image
+            args '-u root'           // Run as root to avoid permission issues
+        }
+    }
 
     options {
         // Disable the default automatic SCM checkout
