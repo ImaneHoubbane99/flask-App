@@ -134,8 +134,9 @@ pipeline {
                         git config user.email "ihoubbane@gmail.com" ## replace with your github useremail
                         git config user.name "ImaneHoubbane99"            ## replace with your github usernamename
                         OLD_BUILD_NUMBER=$((${BUILD_NUMBER}-1))
-                        sed -i "s/${OLD_BUILD_NUMBER}/${BUILD_NUMBER}/g" flask-App/deployment/deployment.yml
-                        git add flask-App/deployment/deployment.yml
+                        sed -i "s/${OLD_BUILD_NUMBER}/${BUILD_NUMBER}/g" flask-App/k8s/deployment.yml
+                        cd flask-App/k8s
+                        git add deployment.yml
                         git commit -m "Update deployment image to version ${BUILD_NUMBER}"
                         git push @github.com/${GIT_USER_NAME}/${GIT_REPO_NAME">https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
                     '''
