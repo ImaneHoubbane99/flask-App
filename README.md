@@ -1,39 +1,7 @@
 YOUR_GITHUB_TOKEN
 username/repo
 
-1-Set Up Jenkins on VM 1:
-1.1 Install Java
-sudo apt update
-sudo apt install openjdk-11-jdk
-1.2 Add Jenkins Repository and Install Jenkins:
-wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | sudo apt-key add -
-sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
-sudo apt update
-sudo apt install jenkins
-1.3 Start Jenkins:
-sudo systemctl start jenkins
-sudo systemctl enable jenkins
-1.4 
-http://<Jenkins-VM-IP>:8080
-
-2-Set Up SonarQube on VM 2
-2.1 Install Java
-sudo apt update
-sudo apt install openjdk-11-jdk
-2.2 Install SonarQube:
-wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-9.7.0.61563.zip
-sudo apt install unzip
-unzip sonarqube-9.7.0.61563.zip
-sudo mv sonarqube-9.7.0.61563 /opt/sonarqube
-2.3 Create a User and Set Permissions:
-sudo groupadd sonar
-sudo useradd -d /opt/sonarqube -g sonar sonar
-sudo chown -R sonar:sonar /opt/sonarqube
-2.4 Run SonarQube
-sudo su - sonar
-/opt/sonarqube/bin/linux-x86-64/sonar.sh start
-2.5 access:
-http://<SonarQube-VM-IP>:9000 admin:admin
+1- install sonarqube 
 
 3-Install and Configure SonarScanner on Jenkins VM (VM 1):
 3.1 Download and Install SonarScanner:
