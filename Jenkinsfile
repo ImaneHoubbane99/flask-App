@@ -1,7 +1,6 @@
 pipeline {
     agent any
     
-    
     options {
         // Disable the default automatic SCM checkout
         skipDefaultCheckout(true)
@@ -51,7 +50,6 @@ pipeline {
             }
         }
 
-
         stage('Setup Virtual Environment') {
             steps {
                 sh '''
@@ -72,7 +70,7 @@ pipeline {
                 '''
             }
         }
-        //unitest
+
         stage('Test') {
             steps {
                 sh '''
@@ -85,10 +83,7 @@ pipeline {
             }
         }
 
-
-        //deploy
-
-        stage("login into docker hub") {
+        stage("Login to Docker Hub") {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                     sh 'echo ${PASSWORD} | docker login -u ${USERNAME} --password-stdin' // login safely
@@ -97,10 +92,9 @@ pipeline {
             }
         }
 
-        stage('build docker image') {
+        stage('Build Docker Image') {
             environment {
                 IMAGE_NAME = 'imane123456788/flask-app'
-                //IMAGE_TAG = "${IMAGE_NAME}:1"
                 IMAGE_TAG = "${IMAGE_NAME}:v${env.BUILD_ID}"
             }
             steps {
@@ -110,10 +104,9 @@ pipeline {
             }
         }
 
-        stage("push to docker hub") {
+        stage("Push to Docker Hub") {
             environment {
                 IMAGE_NAME = 'imane123456788/flask-app'
-                //IMAGE_TAG = "${IMAGE_NAME}:1"
                 IMAGE_TAG = "${IMAGE_NAME}:v${env.BUILD_ID}"
             }
             steps {
@@ -122,28 +115,25 @@ pipeline {
             }
         }
 
-
         stage('Update Deployment File') {
             environment {
-                GIT_REPO_NAME = "deployment-files" ## replace with your github repository name
-                GIT_USER_NAME = "ImaneHoubbane99"   ## replace with your github account username
+                GIT_REPO_NAME = "deployment-files" // replace with your GitHub repository name
+                GIT_USER_NAME = "ImaneHoubbane99" // replace with your GitHub account username
             }
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                     sh '''
-                        git config user.email "ihoubbane@gmail.com" ## replace with your github useremail
-                        git config user.name "ImaneHoubbane99"            ## replace with your github usernamename
+                        git config user.email "ihoubbane@gmail.com" // replace with your GitHub user email
+                        git config user.name "ImaneHoubbane99" // replace with your GitHub username
                         OLD_BUILD_NUMBER=$((${BUILD_NUMBER}-1))
                         sed -i "s/${OLD_BUILD_NUMBER}/${BUILD_NUMBER}/g" flask-App/k8s/deployment.yml
                         cd flask-App/k8s
                         git add deployment.yml
                         git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-                        git push @github.com/${GIT_USER_NAME}/${GIT_REPO_NAME">https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
                     '''
                 }
             }
         }
-
-       
     }
 }
